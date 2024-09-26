@@ -31,6 +31,7 @@ test_size = 0.15
 val_size = 0.15
 
 full_dataset = "/home/waleed/Documents/Medical/data_DRP/LatestDataset_processed_299"
+full_masks_data_path = "/home/waleed/Documents/Medical/data_DRP/SplittedDataset/masks"
 
 full_train_data_path = "/home/waleed/Documents/Medical/data_DRP/SplittedDataset/train"
 full_val_data_path = "/home/waleed/Documents/Medical/data_DRP/SplittedDataset/validation"
