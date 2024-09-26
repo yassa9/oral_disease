@@ -1,5 +1,6 @@
 import torch
 from transformers import pipeline
+from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
@@ -8,6 +9,8 @@ import os
 import random
 import time
 import pickle
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 generator = pipeline(
     "mask-generation",
@@ -25,7 +28,7 @@ def derive_mask_path(image_path):
     return mask_path
 
 
-def process_image(image_path, show_time=True):
+def process_image_pkl(image_path, show_time=True):
     start_time = time.time()
     mask_path = derive_mask_path(image_path)
     if os.path.exists(mask_path):
@@ -34,7 +37,7 @@ def process_image(image_path, show_time=True):
             masks = pickle.load(f)
         return masks
     else:
-        print(f"Generating mask for {image_path}")
+        print(f"Generating masks for {image_path}")
         image = Image.open(image_path).convert('RGB')
         masks = generator(image)
         with open(mask_path, 'wb') as f:
@@ -48,6 +51,50 @@ def process_image(image_path, show_time=True):
             print(f"Time taken: {minutes} minutes and {seconds:.2f} seconds")
         return masks
                 
+
+def process_image_jpg(image_path, show_time=True):
+    start_time = time.time()
+    print(f"Generating masks for {image_path}")
+    image = Image.open(image_path).convert('RGB')
+    masks = generator(image)
+    
+    # Get the base name and directory of the image
+    base_name = os.path.basename(image_path)
+    name_without_ext = os.path.splitext(base_name)[0]
+    
+    # Get the mask directory by replacing '/splitted/' with '/masks/'
+    mask_dir = os.path.dirname(image_path.replace('/splitted/', '/masks/'))
+    
+    os.makedirs(mask_dir, exist_ok=True)
+    
+    # Process each mask
+    for idx, mask in enumerate(masks["masks"]):
+        # Convert the mask to uint8
+        mask_uint8 = (mask * 255).astype(np.uint8)
+        mask_pil = Image.fromarray(mask_uint8, mode='L')
+        
+        # Create a new image with black background
+        black_background = Image.new('RGB', image.size, (0, 0, 0))
+        
+        # Paste the original image onto the black background using the mask
+        black_background.paste(image, mask=mask_pil)
+        
+        # Save the masked image
+        mask_image_name = f"{name_without_ext}_mask{idx+1:03d}.jpg"
+        mask_image_path = os.path.join(mask_dir, mask_image_name)
+        
+        black_background.save(mask_image_path)
+        print(f"Saved masked image: {mask_image_path}")
+    
+    end_time = time.time()
+    if show_time:
+        total_time = end_time - start_time
+        minutes = int(total_time // 60)
+        seconds = total_time % 60
+        print(f"Time taken: {minutes} minutes and {seconds:.2f} seconds")
+
+    print(40*'=')
+
 
 def show_mask(mask, ax, random_color=False):
     if random_color:
